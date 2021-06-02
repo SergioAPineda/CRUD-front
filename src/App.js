@@ -1,4 +1,4 @@
-import React, { useState, useContext, useReducer, useEffect } from "react";
+import React, { useState, useContext, createContext, useReducer, useEffect, useRef } from "react";
 import './App.css';
 const HOST_API = "http://localhost:8080/api"
 
@@ -8,30 +8,68 @@ const initialState = {
 
 const Store = createContext(initialState)
 
+const Form = () => {
+  const formRef = useRef(null);
+  const { dispatch } = useContext(Store);
+  const [state, setState] = useState({});
+
+
+  const onAdd = (event) => {
+    event.preventDefault();
+
+    const request = {
+      name: state.name,
+      description: state.description,
+      id: null,
+      isComplete: false
+    };
+
+
+    fetch(HOST_API+"/todo", {
+      method: "POST",
+      body: JSON.stringify(request),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+      .then(response => response.json())
+      .then((todo) => {
+        dispatch({ type: "add-item", item: todo });
+        setState({ name: "" });
+        formRef.current.reset();
+      })
+  }
+
+  return <form ref={formRef}>
+    <input type='text' name='name' onChange={(event) => {
+      setState({ ...state, name: event.target.value })
+    }}></input>
+    <button onClick={onAdd}>Agregar</button>
+  </form>
+}
+
 const List = () => {
   const { dispatch, state } = useContext(Store);
 
-  useEffect(()=> {
-    fetch(HOST_API+"/todos")
-    .then(response => response.json())
-    .then((list) => {
-      dispatch({type: 'update-list', list})
-    })
+  useEffect(() => {
+    fetch(HOST_API + "/todos")
+      .then(response => response.json())
+      .then((list) => {
+        dispatch({ type: 'update-list', list })
+      })
   }, [state.list.length, dispatch]);
-  return
-  <div>
+  return <div>
     <table>
       <thead>
         <tr>
           <td>ID</td>
-          <td>NOMBRE</td>
+          <td>Nombre</td>
           <td>Esta completado?</td>
         </tr>
       </thead>
       <tbody>
         {state.list.map((todo) => {
-          return
-          <tr key={todo.id}>
+          return <tr key={todo.id}>
             <td>{todo.id}</td>
             <td>{todo.name}</td>
             <td>{todo.description}</td>
@@ -44,31 +82,30 @@ const List = () => {
 }
 
 function reducer(state, action) {
-  switch(action.type) {
+  switch (action.type) {
     case 'update-list':
-      return {...state, list: action.list}
+      return { ...state, list: action.list }
     case 'add-item':
       const newList = state.list;
       newList.push(action.item);
-      return {...state, list: newList}
+      return { ...state, list: newList }
     default:
-      return state;  
+      return state;
   }
 }
 
-const StoreProvider = ({children}) => {
+const StoreProvider = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  return <Store.Provider value = {{state, dispatch}}>
+  return <Store.Provider value={{ state, dispatch }}>
     {children}
   </Store.Provider>
 }
 
-const 
-
 function App() {
   return <StoreProvider>
-    <List/>
+    <Form />
+    <List />
   </StoreProvider>
 }
 
